@@ -3,37 +3,85 @@ package server
 import (
 	"fmt"
 	"net"
-	"os"
+	"strings"
 )
 
-func Run() {
+type datos struct {
+	n   int
+	err error
+}
 
-	l, err := net.Listen("tcp", ":5001")
+type mensaje struct {
+	msg   string
+	conn  net.Conn
+	apodo string
+}
 
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "Puerto en uso")
-		os.Exit(1)
-	}
-	fmt.Println("Socket funcionando")
+var (
+	conexiones []net.Conn
+	server     = make(chan *mensaje)
+)
+
+// Run arranca la sala de chat
+func Run(protocolo string, direcionPuertoEscucha string) {
+	go escuchador()
+	listener, err := net.Listen(protocolo, direcionPuertoEscucha)
+	checkError(err)
+	fmt.Println("Se está escuchando en", listener.Addr())
+
 	for {
-		conn, err := l.Accept()
+		conn, err := listener.Accept()
+		checkError(err)
 
-		if err != nil {
-			continue
-		}
+		fmt.Println("El cliente", conn.RemoteAddr(), "se ha conectado")
 
-		handler(conn)
+		conexiones = append(conexiones, conn)
+
+		go handlerConn(conn)
 	}
 }
 
-func handler(c net.Conn) {
-	var buf []byte
+func handlerConn(conn net.Conn) {
+	defer desconectar(conn)
+	var buffer [512]byte
+	conn.Write([]byte("¿Cuál es tu apodo?: "))
+	n, err := conn.Read(buffer[:])
+	apodo := strings.TrimSpace(string(buffer[:n]))
 
-	n, _ := c.Read(buf)
+	for {
+		conn.Write([]byte(apodo + ": "))
+		n, err = conn.Read(buffer[:])
 
-	c.Write(buf[:n])
+		if err != nil {
+			break
+		}
+		server <- &mensaje{msg: strings.TrimSpace(string(buffer[:n])), conn: conn, apodo: apodo}
+	}
+}
 
-	c.Close()
+func checkError(err error) {
+	if err != nil {
+		fmt.Println(err)
+	}
+}
 
-	return
+func desconectar(conn net.Conn) {
+	defer conn.Close()
+	fmt.Println("Este cliente", conn.RemoteAddr(), "se ha desconectado.")
+}
+
+func escuchador() {
+	for {
+		dato := <-server
+
+		for i := range conexiones {
+			if dato.conn != conexiones[i] {
+				conexiones[i].Write([]byte(dato.msg + "\n"))
+			} else {
+				fmt.Println("REPE!!")
+			}
+		}
+
+		fmt.Println("El cliente", dato.conn.RemoteAddr(), "("+dato.apodo+")", "ha enviado el mensaje:", dato.msg)
+	}
 }

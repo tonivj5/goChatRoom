@@ -6,11 +6,6 @@ import (
 	"strings"
 )
 
-type datos struct {
-	n   int
-	err error
-}
-
 type mensaje struct {
 	msg   string
 	conn  net.Conn
@@ -72,16 +67,16 @@ func desconectar(conn net.Conn) {
 
 func escuchador() {
 	for {
-		dato := <-server
+		mensaje := <-server
 
 		for i := range conexiones {
-			if dato.conn != conexiones[i] {
-				conexiones[i].Write([]byte(dato.msg + "\n"))
+			if mensaje.conn != conexiones[i] {
+				conexiones[i].Write([]byte(mensaje.msg + "\n"))
 			} else {
 				fmt.Println("REPE!!")
 			}
 		}
 
-		fmt.Println("El cliente", dato.conn.RemoteAddr(), "("+dato.apodo+")", "ha enviado el mensaje:", dato.msg)
+		fmt.Println("El cliente", mensaje.conn.RemoteAddr(), "("+mensaje.apodo+")", "ha enviado el mensaje:", mensaje.msg)
 	}
 }

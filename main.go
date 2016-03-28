@@ -3,74 +3,79 @@ package main
 import (
 	"fmt"
 	"net"
-	"os"
 	"strings"
 )
 
-type conexion struct {
-	conn *net.Conn
-	msg  string
+type datos struct {
+	n   int
+	err error
 }
+
+type mensaje struct {
+	msg  string
+	conn net.Conn
+}
+
+var (
+	conexiones []net.Conn
+	server     = make(chan *mensaje)
+)
 
 func main() {
-	l, err := net.Listen("tcp", ":5000")
-	defer l.Close()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "Error al escuchar en el puerto:", err)
-
-		os.Exit(1)
-	}
-
-	var connections []net.Conn
-	c2 := make(chan conexion)
-	go func() {
-		for {
-			connection := <-c2
-			for _, connect := range connections {
-				if connection.conn != &connect {
-					connect.Write([]byte(connection.msg))
-				} else {
-					fmt.Println("Hola caracola")
-				}
-			}
-		}
-	}()
-
-	fmt.Println("Socket funcionando")
-	c := make(chan string)
+	go escuchador()
+	listener, err := net.Listen("tcp", ":5000")
+	checkError(err)
+	fmt.Println("Se está escuchando en", listener.Addr())
 
 	for {
-		conn, err := l.Accept()
-		fmt.Println("Cliente acceptado:", conn.RemoteAddr())
+		conn, err := listener.Accept()
+		checkError(err)
 
-		if err != nil {
-			fmt.Fprintln(os.Stderr, "Ha ocurrido un error:", err)
-			continue
-		}
-		connections = append(connections, conn)
-		go handler(conn, c)
-		go func() {
-			for {
-				c2 <- conexion{
-					msg:  (conn.RemoteAddr().String() + " escribió: " + strings.TrimSpace(<-c) + "\n"),
-					conn: &conn,
-				}
-			}
-		}()
+		fmt.Println("El cliente", conn.RemoteAddr(), "se ha conectado")
+
+		conexiones = append(conexiones, conn)
+
+		go handlerConn(conn)
 	}
 }
 
-func handler(c net.Conn, channel chan string) {
-	defer c.Close()
-
-	var buf [512]byte
-	c.Write([]byte("Bienvenido al chat!\n"))
+func handlerConn(conn net.Conn) {
+	defer desconectar(conn)
+	var buffer [512]byte
 
 	for {
-		n, err := c.Read(buf[:])
+		n, err := conn.Read(buffer[:])
+
 		if err != nil {
 			break
 		}
-		channel <- string(buf[0:n])
+		server <- &mensaje{msg: strings.TrimSpace(string(buffer[:n])), conn: conn}
+	}
+}
+
+func checkError(err error) {
+	if err != nil {
+		fmt.Println(err)
+	}
+}
+
+func desconectar(conn net.Conn) {
+	defer conn.Close()
+	fmt.Println("Este cliente", conn.RemoteAddr(), "se ha desconectado.")
+}
+
+func escuchador() {
+	for {
+		dato := <-server
+
+		for i := range conexiones {
+			if dato.conn != conexiones[i] {
+				conexiones[i].Write([]byte(dato.msg + "\n"))
+			} else {
+				fmt.Println("REPE!!")
+			}
+		}
+
+		fmt.Println("El cliente", dato.conn.RemoteAddr(), "ha enviado el mensaje:", dato.msg)
 	}
 }

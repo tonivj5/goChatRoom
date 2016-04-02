@@ -6,13 +6,13 @@
   </head>
   <body>
     <h1>CHAT ROOM</h1>
-    <div style="width: 500px; height: auto; border: 10px solid black" id="chat">
+    <div style="width: 500px; overflow-y: scroll; height: 200px; 10px solid black" id="chat">
       <ul id="messages">
 
       </ul>
     </div>
     <form method="get" enctype="application/x-www-form-urlencoded" name="enviarmensaje" onsubmit="enviarMsg(msg); return false">
-      <p id="apodo" style="display: inline-block;"></p><input type="text" name="msg" id="msg"/>
+      <p id="apodo" style="display: inline-block;"></p><input type="text" name="msg" id="msg" autocomplete="off"/>
       <input type="submit" value="Enviar"/>
     </form>
   </body>
@@ -55,6 +55,7 @@
                 msg = mensajesNuevos[i];
                 li.innerHTML = msg;
                 msgs.appendChild(li);
+                msgs.lastElementChild.scrollIntoView(true);
               }
             }
           }
@@ -73,6 +74,6 @@
 
     getMsg();
 
-    setInterval(getMsg, 8000);
+    setInterval(getMsg, 6000);
   </script>
 </html>

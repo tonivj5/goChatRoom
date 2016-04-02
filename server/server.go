@@ -67,19 +67,23 @@ func handlerConn(conn net.Conn) {
 		if len(params) == 1 {
 			outOfDateMessage, err := strconv.Atoi(strings.Split(params[0], "=")[1])
 			if err != nil {
+				fmt.Print("Error en outOfDateMessage: ")
 				checkError(err)
 
 				return
 			}
 
 			upOfDateMessage := len(mensajes)
+			lastMessge := strconv.Itoa(upOfDateMessage) + ".---*"
+
 			fmt.Println(outOfDateMessage, upOfDateMessage)
 			if outOfDateMessage > upOfDateMessage {
+				conn.Write([]byte(lastMessge))
+
 				return
 			}
 
 			listaMensajes := mensajes[outOfDateMessage:upOfDateMessage]
-			lastMessge := strconv.Itoa(upOfDateMessage) + ".---*"
 			mensajesAEnviar := make([]string, len(listaMensajes))
 			for i := range listaMensajes {
 				mensajesAEnviar[i] = listaMensajes[i].apodo + ": " + listaMensajes[i].msg

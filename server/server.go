@@ -3,6 +3,9 @@ package server
 import (
 	"fmt"
 	"net"
+	"net/url"
+	"os"
+	"strconv"
 	"strings"
 )
 
@@ -13,8 +16,8 @@ type mensaje struct {
 }
 
 var (
-	conexiones []net.Conn
-	server     = make(chan *mensaje)
+	mensajes []*mensaje
+	server   = make(chan *mensaje)
 )
 
 // Run arranca la sala de chat
@@ -30,27 +33,64 @@ func Run(protocolo string, direcionPuertoEscucha string) {
 
 		fmt.Println("El cliente", conn.RemoteAddr(), "se ha conectado")
 
-		conexiones = append(conexiones, conn)
-
 		go handlerConn(conn)
 	}
 }
 
 func handlerConn(conn net.Conn) {
 	defer desconectar(conn)
-	var buffer [512]byte
-	conn.Write([]byte("¿Cuál es tu apodo?: "))
+	var buffer [10024]byte
 	n, err := conn.Read(buffer[:])
-	apodo := strings.TrimSpace(string(buffer[:n]))
+	checkError(err)
+	headers := strings.Split(string(buffer[:n]), "\r\n")
+	fmt.Println(headers)
+	query, _ := url.QueryUnescape(strings.Split(headers[0], " ")[1])
+	query = query[1:]
 
-	for {
-		conn.Write([]byte(apodo + ": "))
-		n, err = conn.Read(buffer[:])
+	var nuevo = true
+	params := strings.Split(query, "&")
+	fmt.Println("Parámetros:", params, len(params))
+	if params[0] != "" && !strings.Contains(params[0], "favicon.ico") {
+		params[0] = params[0][1:]
+		fmt.Printf("%#v\n", params)
+		nuevo = false
+	}
 
-		if err != nil {
-			break
+	headerResponse := strings.Split(headers[0], " ")[2] + " 200 OK\r\nX-Name: Soy Toni\r\nContent-Type: text/html; charset=utf8\r\n\r\n"
+	conn.Write([]byte(headerResponse))
+
+	if nuevo {
+		contenido, _ := os.Open("./resources/html/chat.html")
+		n, _ = contenido.Read(buffer[:])
+		conn.Write(buffer[:n])
+	} else {
+		if len(params) == 1 {
+			outOfDateMessage, err := strconv.Atoi(strings.Split(params[0], "=")[1])
+			if err != nil {
+				checkError(err)
+
+				return
+			}
+
+			upOfDateMessage := len(mensajes)
+			fmt.Println(outOfDateMessage, upOfDateMessage)
+			if outOfDateMessage > upOfDateMessage {
+				return
+			}
+
+			listaMensajes := mensajes[outOfDateMessage:upOfDateMessage]
+			lastMessge := strconv.Itoa(upOfDateMessage) + ".---*"
+			mensajesAEnviar := make([]string, len(listaMensajes))
+			for i := range listaMensajes {
+				mensajesAEnviar[i] = listaMensajes[i].apodo + ": " + listaMensajes[i].msg
+			}
+
+			conn.Write([]byte(lastMessge + strings.Join(mensajesAEnviar, "***___***")))
+		} else {
+			apodo := strings.Split(params[0], "=")[1]
+			msg := strings.Split(params[1], "=")[1]
+			server <- &mensaje{msg: strings.TrimSpace(string(msg)), conn: conn, apodo: apodo}
 		}
-		server <- &mensaje{msg: strings.TrimSpace(string(buffer[:n])), conn: conn, apodo: apodo}
 	}
 }
 
@@ -68,15 +108,7 @@ func desconectar(conn net.Conn) {
 func escuchador() {
 	for {
 		mensaje := <-server
-
-		for i := range conexiones {
-			if mensaje.conn != conexiones[i] {
-				conexiones[i].Write([]byte(mensaje.msg + "\n"))
-			} else {
-				fmt.Println("REPE!!")
-			}
-		}
-
+		mensajes = append(mensajes, mensaje)
 		fmt.Println("El cliente", mensaje.conn.RemoteAddr(), "("+mensaje.apodo+")", "ha enviado el mensaje:", mensaje.msg)
 	}
 }

@@ -93,6 +93,7 @@ func (ws *sala) delCliente(c *cliente) {
 }
 
 // Difunde el mensaje por el resto de clientes
+// TODO: Enviar al cliente la fecha del mensaje
 func (ws *sala) broadcastClientes(msg *mensaje) {
 	ws.chAll <- msg
 }

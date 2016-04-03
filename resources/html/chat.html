@@ -4,6 +4,7 @@
     <meta charset="utf8"/>
     <title>Chat ROOM of Toni</title>
     <style type="text/css">
+    // TODO: Darle estilo a los mensajes del propio cliente para diferenciarlos
       #chat {
         width: 500px;
         overflow-y: scroll;
@@ -26,6 +27,7 @@
       <input type="submit" value="Enviar"/>
     </form>
   </body>
+  <!-- TODO: Separar JS del HTML -->
   <script type="text/javascript">
     // Recibir el apodo
     var id, first, apodo = prompt("Introduce tu apodo");
@@ -47,6 +49,7 @@
 
     ws.onclose = function(e){
       console.log("Desconectado - estatus " + this.readyState);
+      // TODO: Crear proceso de reconexión
 //      console.log("Intentando reconectar...");
     };
 

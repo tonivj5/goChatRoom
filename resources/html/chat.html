@@ -3,22 +3,32 @@
   <head>
     <meta charset="utf8"/>
     <title>Chat ROOM of Toni</title>
+    <style type="text/css">
+      #chat {
+        width: 500px;
+        overflow-y: scroll;
+        height: 200px;
+        border: 7px solid black;
+      }
+
+      #apodo {
+        display: inline-block;
+      }
+    </style>
   </head>
   <body>
     <h1>CHAT ROOM</h1>
-    <div style="width: 500px; overflow-y: scroll; height: 200px; 10px solid black" id="chat">
-      <ul id="messages">
-
-      </ul>
+    <div id="chat">
+      <ul id="messages"></ul>
     </div>
-    <form method="get" enctype="application/x-www-form-urlencoded" name="enviarmensaje" onsubmit="enviarMsg(msg); return false">
-      <p id="apodo" style="display: inline-block;"></p><input type="text" name="msg" id="msg" autocomplete="off"/>
+    <form name="enviarmensaje" onsubmit="enviarMsg(msg); return false;">
+      <p id="apodo"></p><input type="text" name="msg" id="msg" autocomplete="off"/>
       <input type="submit" value="Enviar"/>
     </form>
   </body>
   <script type="text/javascript">
     // Recibir el apodo
-    var apodo = prompt("Introduce tu apodo");
+    var id, first, apodo = prompt("Introduce tu apodo");
     console.log("Bienvenido al chat de Toni, "+apodo);
     var inputApodo = document.getElementById('apodo');
     inputApodo.innerHTML = apodo+": ";
@@ -29,51 +39,49 @@
     // Último mensaje
     var lastMessage = 0;
 
-    function postMsg(msg) {
-      var ajax = new XMLHttpRequest();
+    // Abrir websocket
+    var ws = new WebSocket("ws://localhost:5000/chat")
+    ws.onopen = function() {
+      ws.send(apodo);
+    };
 
-      var url = "/?apodo="+apodo+"&msg="+msg.value;
+    ws.onclose = function(e){
+      console.log("Desconectado - estatus " + this.readyState);
+//      console.log("Intentando reconectar...");
+    };
+
+      ws.onmessage = getMsg;
+
+    function postMsg(msg) {
+      ws.send(msg.value);
       msg.value = "";
-      ajax.open("POST", url, true);
-      ajax.send();
     }
 
-    function getMsg() {
-      var ajax = new XMLHttpRequest();
-      ajax.onreadystatechange = function() {
-        if(ajax.readyState == 4) {
-          var msg = ajax.responseText;
-          if(msg) {
-            partesMsg = msg.split(".---*")
-            console.log(partesMsg);
-            lastMessage = parseInt(partesMsg[0]);
-            if(partesMsg[1]) {
-              mensajesNuevos = partesMsg[1].split("***___***");
-              console.log(mensajesNuevos);
-              for(var i = 0; i < mensajesNuevos.length; i++) {
-                var li = document.createElement("li");
-                msg = mensajesNuevos[i];
-                li.innerHTML = msg;
-                msgs.appendChild(li);
-                msgs.lastElementChild.scrollIntoView(true);
-              }
-            }
-          }
-        }
-      };
+    function getMsg(e) {
+      if(!first) {
+        id = e.data;
+        console.log("Mi ID es: "+id);
+        first = true;
 
-      ajax.open("GET", "/?lastMessage="+lastMessage, true);
-      ajax.send()
+        return;
+      }
+
+      console.log("Mensaje recibido: ")
+      console.log(e)
+      var msg = e.data;
+      if(msg) {
+        var li = document.createElement("li");
+        li.innerHTML = msg;
+        msgs.appendChild(li);
+        msgs.lastElementChild.scrollIntoView(true);
+      }
     }
 
     function enviarMsg(msg) {
       console.log(apodo + " envía: " + msg.value)
       postMsg(msg);
-      getMsg();
+
+      return false;
     }
-
-    getMsg();
-
-    setInterval(getMsg, 6000);
   </script>
 </html>

@@ -1,7 +1,7 @@
 package chat
 
-type mensaje struct {
-	contenido string
-	cliente   *cliente
-	fecha     string
+type Mensaje struct {
+	Contenido string   `json:"msg"`
+	Cliente   *Cliente `json:"cliente"`
+	Fecha     string   `json:"fecha"`
 }

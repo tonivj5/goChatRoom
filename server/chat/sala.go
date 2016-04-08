@@ -1,6 +1,7 @@
 package chat
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -10,40 +11,44 @@ import (
 
 type sala struct {
 	ids      int
-	mensajes []*mensaje
-	clientes []*cliente
-	chDel    chan *cliente
-	chAdd    chan *cliente
-	chAll    chan *mensaje
+	mensajes []*Mensaje
+	clientes []*Cliente
+	chDel    chan *Cliente
+	chAdd    chan *Cliente
+	chAll    chan *Mensaje
 }
 
 // NewSala crea una nueva sala de chat
 func NewSala() *sala {
 	return &sala{
 		ids:      0,
-		mensajes: make([]*mensaje, 0, 150),
-		clientes: make([]*cliente, 0, 10),
-		chAdd:    make(chan *cliente),
-		chDel:    make(chan *cliente),
-		chAll:    make(chan *mensaje),
+		mensajes: make([]*Mensaje, 0, 150),
+		clientes: make([]*Cliente, 0, 10),
+		chAdd:    make(chan *Cliente),
+		chDel:    make(chan *Cliente),
+		chAll:    make(chan *Mensaje),
 	}
 }
 
 func (ws *sala) Listen() {
-	var buffer [512]byte
+	var buffer [1024]byte
 
 	conectar := func(conn *websocket.Conn) {
 		// Aseguramos la desconexión del cliente
 		defer desconectar(conn)
-		// Pedimos el apodo al cliente
+		// Pedimos el apodo al cliente o si ya estaba inscrito nos mandará el id
 		n, _ := conn.Read(buffer[:])
-		apodo := string(buffer[:n])
-		fmt.Printf("El cliente %s realiza una nueva conexión desde: %s\n", apodo, conn.RemoteAddr().String())
-
 		// Creamos el cliente
-		newCliente := NewCliente(apodo, conn, ws)
-		// Devolvemos su ID
-		conn.Write([]byte(strconv.Itoa(newCliente.id)))
+		newCliente := NewCliente(conn, ws)
+		// Decodificamos el JSON y rellenamos el cliente recién creado
+		json.Unmarshal(buffer[:n], newCliente)
+		fmt.Printf("El cliente %s realiza una nueva conexión desde: %s\n", newCliente.Apodo, conn.Request().RemoteAddr)
+		if newCliente.ID == -1 {
+			newCliente.ID = ws.newID()
+			// Devolvemos su ID
+			conn.Write([]byte(strconv.Itoa(newCliente.ID)))
+		}
+
 		ws.addCliente(newCliente)
 		// Mandamos al cliente mensajes antiguos
 		ws.ultimosMensajes(newCliente)
@@ -66,7 +71,7 @@ func (ws *sala) Listen() {
 			// Almacenamos el mensaje una única vez
 			ws.mensajes = append(ws.mensajes, msg)
 			// Log sobre quién y qué mensaje ha mandado
-			fmt.Printf("El cliente %s ha mandado el mensaje: %s\n", msg.cliente.apodo, msg.contenido)
+			fmt.Printf("El cliente %s ha mandado el mensaje: %s\n", msg.Cliente.Apodo, msg.Contenido)
 			// Enviamos el mensaje a todo cristo
 			for i := range ws.clientes {
 				ws.clientes[i].WriteToCliente(msg)
@@ -76,25 +81,31 @@ func (ws *sala) Listen() {
 }
 
 // Úlimos  mensajes que el nuevo cliente no ha llegado a recibir
-func (ws *sala) ultimosMensajes(c *cliente) {
+func (ws *sala) ultimosMensajes(c *Cliente) {
 	for i := range ws.mensajes {
 		msg := ws.mensajes[i]
-		c.conn.Write([]byte(msg.cliente.apodo + ": " + msg.contenido))
+		json, err := CodificarJSON(msg)
+
+		if err != nil {
+			fmt.Println("Ocurrió un error en la codificiación del JSON")
+		}
+
+		c.conn.Write(json)
 	}
 }
 
 // Añadir un cliente nuevo para el broadcast
-func (ws *sala) addCliente(c *cliente) {
+func (ws *sala) addCliente(c *Cliente) {
 	ws.chAdd <- c
 }
 
-func (ws *sala) delCliente(c *cliente) {
+func (ws *sala) delCliente(c *Cliente) {
 	ws.chAdd <- c
 }
 
 // Difunde el mensaje por el resto de clientes
-// TODO: Enviar al cliente la fecha del mensaje
-func (ws *sala) broadcastClientes(msg *mensaje) {
+// TODO: Enviar al cliente además de la hora la fecha (quizá separar Fecha de hora...)
+func (ws *sala) broadcastClientes(msg *Mensaje) {
 	ws.chAll <- msg
 }
 
@@ -108,4 +119,8 @@ func (ws *sala) newID() (id int) {
 	ws.ids++
 
 	return
+}
+
+func CodificarJSON(msg *Mensaje) ([]byte, error) {
+	return json.Marshal(msg)
 }

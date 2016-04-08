@@ -6,7 +6,7 @@
     <style type="text/css">
     /*TODO: Darle estilo a los mensajes del propio cliente para diferenciarlos*/
       #chat {
-        width: 500px;
+        width: 98%;
         overflow-y: scroll;
         height: 200px;
         border: 7px solid black;
@@ -14,6 +14,16 @@
 
       #apodo {
         display: inline-block;
+      }
+
+      ul {
+        list-style: none;
+        padding-left: 3px;
+      }
+
+      .msg {
+        white-space: pre-wrap;
+        word-break: break-all;
       }
     </style>
   </head>
@@ -29,6 +39,7 @@
   </body>
   <!-- TODO: Separar JS del HTML -->
   <script type="text/javascript">
+    "use strict";
     // Recibir el apodo
     var id, first, apodo = prompt("Introduce tu apodo");
     console.log("Bienvenido al chat de Toni, "+apodo);
@@ -42,7 +53,7 @@
     var lastMessage = 0;
 
     // Abrir websocket
-    var ws = new WebSocket("ws://localhost:5000/chat")
+    var ws = new WebSocket("ws://192.168.1.9:5000/chat")
     ws.onopen = function() {
       ws.send(apodo);
     };
@@ -74,7 +85,10 @@
       var msg = e.data;
       if(msg) {
         var li = document.createElement("li");
-        li.innerHTML = msg;
+        var pre = document.createElement("pre");
+        pre.setAttribute("class", "msg");
+        pre.innerHTML = msg;
+        li.appendChild(pre);
         msgs.appendChild(li);
         msgs.lastElementChild.scrollIntoView(true);
       }

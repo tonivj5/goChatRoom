@@ -111,7 +111,7 @@ func (ws *sala) broadcastClientes(msg *Mensaje) {
 
 // Log de desconexión de un cliente
 func desconectar(c *websocket.Conn) {
-	fmt.Printf("El cliente %s se ha desconectado\n", c.RemoteAddr().String())
+	fmt.Printf("El cliente %s se ha desconectado\n", c.Request().RemoteAddr)
 }
 
 func (ws *sala) newID() (id int) {

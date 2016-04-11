@@ -26,8 +26,8 @@ func NewCliente(conn *ws.Conn, sala *sala) *Cliente {
 }
 
 // Enviamos un mensaje al cliente
-func (c *Cliente) WriteToCliente(msg *Mensaje) {
-	json, err := CodificarJSON(msg)
+func (c *Cliente) WriteToCliente(msg IMensaje) {
+	json, err := msg.getJSON()
 
 	if err != nil {
 		fmt.Println("Ocurrió un error en la codificiación del JSON")
@@ -52,6 +52,7 @@ func (c *Cliente) ReadFromCliente() {
 		}
 		msg := &Mensaje{Cliente: c}
 		json.Unmarshal(buffer[:n], msg)
+		msg.Tipo = MENSAJE
 		c.sala.broadcastClientes(msg)
 	}
 }

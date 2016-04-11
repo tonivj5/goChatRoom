@@ -55,99 +55,15 @@
         <ul id="messages"></ul>
       </div>
       <div id="conectados">
+        <h3>Conectados</h3>
         <ul id="users"></ul>
       </div>
     </div>
     <form name="enviarmensaje" onsubmit="return false;">
       <p id="apodo"></p><input type="text" name="msg" id="msg" autocomplete="off"/>
-      <input type="submit" value="Enviar" onclick="enviarMsg(msg);"/>
+      <input type="submit" value="Enviar" id="enviarMsg"/>
     </form>
   </body>
   <!-- TODO: Separar JS del HTML -->
-  <script type="text/javascript">
-    "use strict";
-    // Comprobar caché del navegador
-    var sesion = {};
-    sesion.apodo = localStorage.getItem("sesion/apodo");
-    sesion.id = parseInt(localStorage.getItem("sesion/id"));
-    if(!(sesion.id && sesion.apodo)) {
-      sesion = {};
-      var first;
-      sesion.apodo = prompt("Introduce tu apodo");
-      sesion.id = -1;
-      localStorage.setItem("sesion/apodo", sesion.apodo);
-      localStorage.setItem("sesion/id", "-1");
-    } else {
-      console.log(sesion);
-      first = true;
-    }
-    // Recibir el apodo
-    console.log("Bienvenido al chat de Toni, "+sesion.apodo);
-    var inputApodo = document.getElementById('apodo');
-    inputApodo.innerHTML = sesion.apodo+": ";
-
-    // Obtener el ul chat
-    var msgs = document.getElementById('messages');
-
-    // Último mensaje
-    var lastMessage = 0;
-
-    // Abrir websocket
-    var ws = new WebSocket("ws://192.168.6.172:5000/chat")
-    ws.onopen = function() {
-      ws.send(JSON.stringify(sesion));
-    };
-
-    ws.onclose = function(e){
-      console.log("Desconectado - estatus " + this.readyState);
-      // TODO: Crear proceso de reconexión
-//      console.log("Intentando reconectar...");
-    };
-
-      ws.onmessage = getMsg;
-
-    function postMsg(msg) {
-      var data = {};
-      var fechaActual = new Date();
-      data.msg = msg.value;
-      data.fecha = (fechaActual.getHours() < 10 ? "0"+fechaActual.getHours() : fechaActual.getHours()) +
-                    ":" + (fechaActual.getMinutes() < 10 ? "0"+fechaActual.getMinutes() : fechaActual.getMinutes());
-      data = JSON.stringify(data);
-      ws.send(data);
-      msg.value = "";
-    }
-
-    function getMsg(e) {
-      if(!first) {
-        sesion.id = e.data;
-        console.log("Mi ID es: "+sesion.id);
-        first = true;
-        localStorage.setItem("sesion/id", sesion.id);
-
-        return;
-      }
-
-      console.log("Mensaje recibido: ");
-      console.log(e);
-      var data = JSON.parse(e.data);
-      if(data) {
-        var li = document.createElement("li");
-        var pre = document.createElement("pre");
-        pre.setAttribute("class", "msg");
-        if(sesion.id == data.cliente.id)
-          pre.setAttribute("class", "mio");
-        pre.innerHTML = "*" + data.fecha + "* " + data.cliente.apodo + ": " + data.msg;
-        li.appendChild(pre);
-        msgs.appendChild(li);
-        msgs.lastElementChild.scrollIntoView(true);
-      }
-    }
-
-    function enviarMsg(msg) {
-      console.log(sesion.apodo + " envía: " + msg.value)
-      postMsg(msg);
-
-      return false;
-    }
-  </script>
+  <script src="chat.js" type="text/javascript"></script>
 </html>

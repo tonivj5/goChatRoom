@@ -5,11 +5,28 @@
     <title>Chat ROOM of Toni</title>
     <style type="text/css">
     /*TODO: Darle estilo a los mensajes del propio cliente para diferenciarlos*/
-      #chat {
+      #wrapper {
         width: 98%;
+      }
+
+      #conectados {
+        width: 25%;
+        border: 7px solid black;
+        float: left;
+      }
+
+      #chat {
+        width: 70%;
         overflow-y: auto;
         height: 200px;
         border: 7px solid black;
+        float: left;
+      }
+
+      #wrapper::after {
+          content: "";
+          display: block;
+          clear: both;
       }
 
       #apodo {
@@ -33,12 +50,17 @@
   </head>
   <body>
     <h1>CHAT ROOM</h1>
-    <div id="chat">
-      <ul id="messages"></ul>
+    <div id="wrapper">
+      <div id="chat">
+        <ul id="messages"></ul>
+      </div>
+      <div id="conectados">
+        <ul id="users"></ul>
+      </div>
     </div>
-    <form name="enviarmensaje" onsubmit="enviarMsg(msg); return false;">
+    <form name="enviarmensaje" onsubmit="return false;">
       <p id="apodo"></p><input type="text" name="msg" id="msg" autocomplete="off"/>
-      <input type="submit" value="Enviar"/>
+      <input type="submit" value="Enviar" onclick="enviarMsg(msg);"/>
     </form>
   </body>
   <!-- TODO: Separar JS del HTML -->
@@ -71,7 +93,7 @@
     var lastMessage = 0;
 
     // Abrir websocket
-    var ws = new WebSocket("ws://192.168.1.9:5000/chat")
+    var ws = new WebSocket("ws://192.168.6.172:5000/chat")
     ws.onopen = function() {
       ws.send(JSON.stringify(sesion));
     };

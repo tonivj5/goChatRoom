@@ -12,7 +12,7 @@ import (
 type sala struct {
 	ids      int
 	mensajes []*Mensaje
-	clientes []*Cliente
+	clientes map[int]*Cliente
 	chDel    chan *Cliente
 	chAdd    chan *Cliente
 	chAll    chan *Mensaje
@@ -23,7 +23,7 @@ func NewSala() *sala {
 	return &sala{
 		ids:      0,
 		mensajes: make([]*Mensaje, 0, 150),
-		clientes: make([]*Cliente, 0, 10),
+		clientes: make(map[int]*Cliente, 0),
 		chAdd:    make(chan *Cliente),
 		chDel:    make(chan *Cliente),
 		chAll:    make(chan *Mensaje),
@@ -65,7 +65,7 @@ func (ws *sala) Listen() {
 		// Nuevo cliente
 		case newCliente := <-ws.chAdd:
 			fmt.Println("Nuevo cliente añadido:", newCliente)
-			ws.clientes = append(ws.clientes, newCliente)
+			ws.clientes[newCliente.ID] = newCliente
 		// Mensaje de un cliente al todos
 		case msg := <-ws.chAll:
 			// Almacenamos el mensaje una única vez
@@ -76,6 +76,8 @@ func (ws *sala) Listen() {
 			for i := range ws.clientes {
 				ws.clientes[i].WriteToCliente(msg)
 			}
+			/*case id := <-ws.chDel:
+			delete(ws.clientes, id)*/
 		}
 	}
 }
@@ -92,6 +94,16 @@ func (ws *sala) ultimosMensajes(c *Cliente) {
 
 		c.conn.Write(json)
 	}
+}
+
+/*func (ws *sala) clientesConectados(c *Cliente) {
+	for i := range ws.clientes {
+
+	}
+}*/
+
+func (ws *sala) nuevoClienteConectado(c *Cliente) {
+
 }
 
 // Añadir un cliente nuevo para el broadcast
